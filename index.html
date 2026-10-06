@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Controle de Pagamentos de Pedidos de Compra</title>
+    <title>Controle de Pedidos de Compra</title>
     <!-- Bibliotecas para Excel e PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -246,7 +246,7 @@
 <body>
 
     <header>
-        🛒 Controle de Pagamentos de Pedidos de Compra
+        🛒 Controle de Pedidos de Compra
     </header>
 
     <div class="main-container">
@@ -522,7 +522,7 @@
                         <td>${p.operacional || ''}</td>
                         <td>
                             <button class="action-icon-btn btn-editar" data-id="${p.id}" title="Editar">✏️</button>
-                            <button class="action-icon-btn btn-excluir" data-id="${p.id}" title="Excluir">🗑️</button>
+                            <button class="action-icon-btn btn-excluir" data-id="${p.id}" title="Excluir">🗑️️</button>
                         </td>
                     </tr>
                 `;
@@ -548,7 +548,7 @@
                         document.getElementById('inputObra').value = pedidoObj.obra || '';
                         document.getElementById('inputOperacional').value = pedidoObj.operacional || 'NÃO';
                         
-                        document.getElementById('modalTituloText').innerHTML = `✏️️ Editar Pedido (<span id="modalAbaTitulo">${abaAtual}</span>)`;
+                        document.getElementById('modalTituloText').innerHTML = `✏ Editar Pedido (<span id="modalAbaTitulo">${abaAtual}</span>)`;
                         document.getElementById('modalNovo').style.display = 'flex';
                     }
                 });
@@ -731,11 +731,21 @@
                 p.operacional || ''
             ]);
 
+            // Calcula o valor total dos pedidos exibidos no relatório
+            let valorTotalGeral = filtrados.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
+
             docPdf.autoTable({
                 head: [['TAG', 'PEDIDO', 'PAGO', 'VALOR', 'DATA', 'FORNECEDOR', 'OBSERVAÇÃO', 'PRIORIDADE', 'OBRA', 'OPERACIONAL']],
                 body: dadosPdf,
                 startY: 20,
-                styles: { fontSize: 8 }
+                styles: { fontSize: 8 },
+                didDrawPage: function (data) {
+                    // Adiciona o valor total logo abaixo da tabela no PDF
+                    let finalY = data.cursor.y + 10;
+                    docPdf.setFontSize(10);
+                    docPdf.setFont("helvetica", "bold");
+                    docPdf.text(`VALOR TOTAL: R$ ${valorTotalGeral.toFixed(2)}`, 14, finalY);
+                }
             });
 
             docPdf.save(`Controle_Pedidos_${abaAtual}_${nomeFiltroDescricao}.pdf`);
