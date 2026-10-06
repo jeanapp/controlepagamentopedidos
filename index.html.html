@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Controle de Pedidos de Compra</title>
+    <style>
+        :root {
+            --primary-color: #1a252f;
+            --accent-color: #007bff;
+            --success-color: #27ae60;
+            --danger-color: #c0392b;
+            --warning-color: #f1c40f;
+            --bg-color: #f8f9fa;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 0;
+            color: #333;
+        }
+        header {
+            background-color: var(--primary-color);
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .main-container {
+            max-width: 1600px;
+            margin: 20px auto;
+            padding: 0 20px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            font-size: 15px;
+            font-weight: bold;
+            border: 1px solid #ccc;
+            background: #e9ecef;
+            color: #333;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s;
+        }
+        .tab-btn.active {
+            background: white;
+            color: var(--accent-color);
+            border-bottom: 3px solid var(--accent-color);
+        }
+        .summary-cards {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        .card {
+            background: white;
+            padding: 15px 20px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            border-left: 4px solid var(--accent-color);
+        }
+        .card:nth-child(2) { border-left-color: var(--success-color); }
+        .card:nth-child(3) { border-left-color: var(--danger-color); }
+        .card-title {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .card-value {
+            font-size: 22px;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .toolbar {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .toolbar-left, .toolbar-right {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 220px;
+        }
+        .btn-filter {
+            padding: 8px 15px;
+            border: 1px solid #ccc;
+            background: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-filter.active-all { background: #6c757d; color: white; border-color: #6c757d; }
+        .btn-filter.active-paid { background: #27ae60; color: white; border-color: #27ae60; }
+        .btn-filter.active-unpaid { background: #c0392b; color: white; border-color: #c0392b; }
+        .btn-action {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .btn-excel { background: #27ae60; }
+        .btn-pdf { background: #c0392b; }
+        .btn-backup { background: #6c757d; }
+        .btn-restore { background: #f39c12; }
+        .btn-new { background: var(--accent-color); }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 6px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            font-size: 13px;
+        }
+        th, td {
+            padding: 12px 10px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-weight: 600;
+        }
+        .badge-status {
+            padding: 4px 8px;
+            border-radius: 4px;
+            color: white;
+            font-weight: bold;
+            font-size: 11px;
+            display: inline-block;
+        }
+        .badge-sim { background-color: var(--success-color); }
+        .badge-nao { background-color: var(--danger-color); }
+        .action-icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+            padding: 2px 5px;
+        }
+
+        /* Estilo do Modal de Cadastro */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        .modal-content {
+            background: white;
+            padding: 25px;
+            border-radius: 8px;
+            width: 450px;
+            max-width: 90%;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .modal-content h3 { margin-top: 0; color: var(--primary-color); }
+        .form-group {
+            margin-bottom: 12px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 4px;
+            color: #555;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 7px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 13px;
+        }
+        .modal-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .btn-cancelar { background: #6c757d; color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-salvar { background: var(--success-color); color: white; padding: 8px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        🛒 Controle de Pedidos de Compra
+    </header>
+
+    <div class="main-container">
+        <!-- Abas -->
+        <div class="tabs">
+            <button class="tab-btn active" id="btnMaquinas">⚙️ Máquinas</button>
+            <button class="tab-btn" id="btnCaminhoes">🚛 Caminhões</button>
+        </div>
+
+        <!-- Cards de Resumo -->
+        <div class="summary-cards">
+            <div class="card">
+                <div class="card-title" id="lblTotalCount">Total de Pedidos Exibidos (Máquinas)</div>
+                <div class="card-value" id="valCount">0</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Valor Total (Filtro Atual)</div>
+                <div class="card-value" id="valTotalValor">R$ 0,00</div>
+            </div>
+            <div class="card">
+                <div class="card-title">Pendentes de Pagamento</div>
+                <div class="card-value" id="valTotalPendente" style="color: var(--danger-color);">R$ 0,00</div>
+            </div>
+        </div>
+
+        <!-- Barra de Ferramentas -->
+        <div class="toolbar">
+            <div class="toolbar-left">
+                <strong>📋 Lista de Pedidos - <span id="lblTituloAba">Máquinas</span></strong>
+                <input type="text" id="searchInput" class="search-box" placeholder="Pesquisar...">
+                <button class="btn-filter active-all" id="filterAll">Todos</button>
+                <button class="btn-filter" id="filterPaid">Pagos</button>
+                <button class="btn-filter" id="filterUnpaid">Não Pagos</button>
+            </div>
+            <div class="toolbar-right">
+                <button class="btn-action btn-excel" id="btnExcel">📊 Excel</button>
+                <button class="btn-action btn-pdf" id="btnPdf">📄 PDF</button>
+                <button class="btn-action btn-backup" id="btnBackup">💾 Backup</button>
+                <button class="btn-action btn-restore" id="btnRestore">📤 Restaurar</button>
+                <button class="btn-action btn-new" id="btnNovo">+ Novo</button>
+            </div>
+        </div>
+
+        <!-- Tabela -->
+        <table>
+            <thead>
+                <tr>
+                    <th>TAG</th>
+                    <th>PEDIDO</th>
+                    <th>PAGO</th>
+                    <th>VALOR (R$)</th>
+                    <th>DATA</th>
+                    <th>FORNECEDOR</th>
+                    <th>OBSERVAÇÃO DO PEDIDO</th>
+                    <th>TOTAL POR TAG</th>
+                    <th>PRIORIDADE</th>
+                    <th>OBRA</th>
+                    <th>OPERACIONAL</th>
+                    <th>AÇÕES</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaPedidos">
+                <tr><td colspan="12" style="text-align: center; padding: 20px;">Carregando dados...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Modal Novo Pedido -->
+    <div class="modal-overlay" id="modalNovo">
+        <div class="modal-content">
+            <h3>➕ Novo Pedido (<span id="modalAbaTitulo">Máquinas</span>)</h3>
+            <div class="form-group">
+                <label>TAG:</label>
+                <input type="text" id="inputTag" placeholder="Ex: CBS01">
+            </div>
+            <div class="form-group">
+                <label>Número do Pedido:</label>
+                <input type="text" id="inputPedido" placeholder="Ex: 2">
+            </div>
+            <div class="form-group">
+                <label>Pago:</label>
+                <select id="inputPago">
+                    <option value="NÃO">NÃO</option>
+                    <option value="SIM">SIM</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Valor (R$):</label>
+                <input type="number" step="0.01" id="inputValor" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Fornecedor:</label>
+                <input type="text" id="inputFornecedor" placeholder="Nome do Fornecedor">
+            </div>
+            <div class="form-group">
+                <label>Observação do Pedido:</label>
+                <input type="text" id="inputObservacao" placeholder="Ex: PISTÃO FREIO MOTOR">
+            </div>
+            <div class="form-group">
+                <label>Prioridade:</label>
+                <select id="inputPrioridade">
+                    <option value="SIM">SIM</option>
+                    <option value="Normal">Normal</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Obra:</label>
+                <input type="text" id="inputObra" placeholder="Nome da Obra">
+            </div>
+            <div class="form-group">
+                <label>Operacional:</label>
+                <select id="inputOperacional">
+                    <option value="NÃO">NÃO</option>
+                    <option value="SIM">SIM</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancelar" id="btnFecharModal">Cancelar</button>
+                <button class="btn-salvar" id="btnSalvarPedido">Salvar Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Firebase e Lógica -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbMSVcNWytP1-6feee0eZJ6UFgTYko34I",
+            authDomain: "controle-de-pagamento-pedidos.firebaseapp.com",
+            projectId: "controle-de-pagamento-pedidos",
+            storageBucket: "controle-de-pagamento-pedidos.firebasestorage.app",
+            messagingSenderId: "1011013796860",
+            appId: "1:1011013796860:web:a2b51ba137f29763bde879",
+            measurementId: "G-GNVGXCWN2T"
+        };
+
+        let db = null;
+        let listaGlobalPedidos = [];
+        let abaAtual = 'Máquinas';
+        let statusFiltro = 'all';
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        } catch (err) {
+            console.error("Erro ao iniciar Firebase:", err);
+        }
+
+        function switchTab(aba) {
+            abaAtual = aba;
+            document.getElementById('btnMaquinas').classList.toggle('active', aba === 'Máquinas');
+            document.getElementById('btnCaminhoes').classList.toggle('active', aba === 'Caminhões');
+            document.getElementById('lblTituloAba').innerText =
