@@ -1,3 +1,8 @@
+Aqui está o código completo e atualizado com a escuta em tempo real (onSnapshot) e a nova lógica do "Total por TAG", que agora respeita o filtro selecionado (se estiver em Todos, soma tudo; se estiver em Pagos, soma apenas os pagos; se estiver em Não Pagos, soma apenas os pendentes daquela TAG).
+
+Basta copiar todo o código abaixo e substituir inteiramente o conteúdo do seu arquivo index.html:
+
+HTML
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -360,10 +365,10 @@
         </div>
     </div>
 
-    <!-- Script Firebase e Lógica -->
+    <!-- Script Firebase e Lógica em Tempo Real -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyDbMSVcNWytP1-6feee0eZJ6UFgTYko34I",
@@ -389,21 +394,22 @@
             console.error("Erro ao iniciar Firebase:", err);
         }
 
-        async function carregarPedidos() {
+        function iniciarEscutaTempoReal() {
             if (!db) return;
             const tbody = document.getElementById('tabelaPedidos');
             tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 20px;">Carregando dados...</td></tr>`;
-            try {
-                const querySnapshot = await getDocs(collection(db, "pedidos"));
+            
+            // onSnapshot escuta alterações em tempo real em todos os computadores
+            onSnapshot(collection(db, "pedidos"), (querySnapshot) => {
                 listaGlobalPedidos = [];
                 querySnapshot.forEach((docSnap) => {
                     listaGlobalPedidos.push({ id: docSnap.id, ...docSnap.data() });
                 });
                 renderizarTabela();
-            } catch (err) {
-                console.error("Erro ao buscar dados:", err);
+            }, (err) => {
+                console.error("Erro ao escutar dados:", err);
                 tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: red; padding: 20px;">Erro ao carregar dados do Firebase.</td></tr>`;
-            }
+            });
         }
 
         function renderizarTabela() {
@@ -427,13 +433,21 @@
                 });
             }
 
-            // Calcular o Total por Tag (Soma dos valores dos pedidos da mesma TAG na aba atual)
+            // Lógica do Total por Tag baseada no filtro selecionado (Todos, Pago ou Não Pago)
             const totaisPorTag = {};
             listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).forEach(p => {
                 const tag = (p.tag || '').trim().toUpperCase();
                 const val = parseFloat(p.valor) || 0;
+                const isPago = String(p.pago).toUpperCase() === 'SIM';
+
                 if (tag) {
-                    totaisPorTag[tag] = (totaisPorTag[tag] || 0) + val;
+                    if (statusFiltro === 'all') {
+                        totaisPorTag[tag] = (totaisPorTag[tag] || 0) + val;
+                    } else if (statusFiltro === 'paid' && isPago) {
+                        totaisPorTag[tag] = (totaisPorTag[tag] || 0) + val;
+                    } else if (statusFiltro === 'unpaid' && !isPago) {
+                        totaisPorTag[tag] = (totaisPorTag[tag] || 0) + val;
+                    }
                 }
             });
 
@@ -536,7 +550,6 @@
                     if (confirm('Tem certeza que deseja excluir este pedido?')) {
                         try {
                             await deleteDoc(doc(db, "pedidos", id));
-                            carregarPedidos();
                         } catch (err) {
                             alert('Erro ao excluir pedido.');
                         }
@@ -651,7 +664,6 @@
                 }
 
                 document.getElementById('modalNovo').style.display = 'none';
-                carregarPedidos();
             } catch (err) {
                 console.error("Erro ao salvar:", err);
                 alert('Erro ao guardar o pedido no Firebase.');
@@ -745,11 +757,10 @@
 
                     if (confirm(`Tem certeza que deseja restaurar ${dadosRestaurar.length} pedidos? Isto irá adicionar os registros ao banco de dados.`)) {
                         for (let item of dadosRestaurar) {
-                            delete item.id; // remover ID antigo para gerar novo no Firestore
+                            delete item.id;
                             await addDoc(collection(db, "pedidos"), item);
                         }
                         alert("Backup restaurado com sucesso!");
-                        carregarPedidos();
                     }
                 } catch (err) {
                     console.error("Erro ao ler JSON:", err);
@@ -759,8 +770,8 @@
             reader.readAsText(file);
         });
 
-        // Inicializar carregamento
-        carregarPedidos();
+        // Inicializar a escuta em tempo real ao carregar a página
+        iniciarEscutaTempoReal();
     </script>
 </body>
 </html>
