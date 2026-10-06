@@ -394,7 +394,6 @@
             const tbody = document.getElementById('tabelaPedidos');
             tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 20px;">Carregando dados...</td></tr>`;
             
-            // onSnapshot escuta alterações em tempo real em todos os computadores
             onSnapshot(collection(db, "pedidos"), (querySnapshot) => {
                 listaGlobalPedidos = [];
                 querySnapshot.forEach((docSnap) => {
@@ -407,10 +406,7 @@
             });
         }
 
-        function renderizarTabela() {
-            const tbody = document.getElementById('tabelaPedidos');
-            const busca = document.getElementById('searchInput').value.toLowerCase();
-
+        function obterDadosFiltradosAtuais() {
             let filtrados = listaGlobalPedidos.filter(p => {
                 const tipo = p.tipo || 'Máquinas';
                 return tipo === abaAtual;
@@ -422,13 +418,20 @@
                 filtrados = filtrados.filter(p => String(p.pago).toUpperCase() !== 'SIM');
             }
 
+            const busca = document.getElementById('searchInput').value.toLowerCase();
             if (busca) {
                 filtrados = filtrados.filter(p => {
                     return Object.values(p).some(val => String(val).toLowerCase().includes(busca));
                 });
             }
+            return filtrados;
+        }
 
-            // Lógica do Total por Tag baseada no filtro selecionado (Todos, Pago ou Não Pago)
+        function renderizarTabela() {
+            const tbody = document.getElementById('tabelaPedidos');
+            let filtrados = obterDadosFiltradosAtuais();
+
+            // Lógica do Total por Tag baseada no filtro selecionado
             const totaisPorTag = {};
             listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).forEach(p => {
                 const tag = (p.tag || '').trim().toUpperCase();
@@ -446,7 +449,6 @@
                 }
             });
 
-            // Ordenação A-Z / Z-A ao clicar nos títulos
             if (ordenacaoColuna) {
                 filtrados.sort((a, b) => {
                     let valA, valB;
@@ -515,7 +517,6 @@
             document.getElementById('valTotalValor').innerText = `R$ ${totalGeral.toFixed(2)}`;
             document.getElementById('valTotalPendente').innerText = `R$ ${totalPendente.toFixed(2)}`;
 
-            // Eventos de Editar
             document.querySelectorAll('.btn-editar').forEach(btn => {
                 btn.addEventListener('click', (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
@@ -538,7 +539,6 @@
                 });
             });
 
-            // Eventos de Excluir
             document.querySelectorAll('.btn-excluir').forEach(btn => {
                 btn.addEventListener('click', async (e) => {
                     const id = e.currentTarget.getAttribute('data-id');
@@ -563,7 +563,6 @@
             renderizarTabela();
         }
 
-        // Ordenação por Coluna
         document.querySelectorAll('th[data-col]').forEach(th => {
             th.addEventListener('click', () => {
                 const col = th.getAttribute('data-col');
@@ -577,7 +576,6 @@
             });
         });
 
-        // Botões de Abas e Modal
         document.getElementById('btnMaquinas').addEventListener('click', () => switchTab('Máquinas'));
         document.getElementById('btnCaminhoes').addEventListener('click', () => switchTab('Caminhões'));
 
@@ -600,7 +598,6 @@
             document.getElementById('modalNovo').style.display = 'none';
         });
 
-        // Filtros
         document.getElementById('filterAll').addEventListener('click', () => {
             statusFiltro = 'all';
             document.getElementById('filterAll').className = 'btn-filter active-all';
@@ -627,7 +624,6 @@
 
         document.getElementById('searchInput').addEventListener('input', renderizarTabela);
 
-        // Salvar ou Atualizar Pedido
         document.getElementById('btnSalvarPedido').addEventListener('click', async () => {
             const editId = document.getElementById('editId').value;
             const tag = document.getElementById('inputTag').value;
@@ -665,9 +661,17 @@
             }
         });
 
-        // Exportar para Excel (.xlsx)
+        // Exportar para Excel (.xlsx) respeitando o filtro atual
         document.getElementById('btnExcel').addEventListener('click', () => {
-            const dadosExportar = listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).map(p => ({
+            const filtrados = obterDadosFiltradosAtuais();
+            if (filtrados.length === 0) {
+                alert("Não há dados para exportar com o filtro atual.");
+                return;
+            }
+
+            const nomeFiltro = statusFiltro === 'paid' ? 'Pagos' : (statusFiltro === 'unpaid' ? 'Nao_Pagos' : 'Todos');
+
+            const dadosExportar = filtrados.map(p => ({
                 "TAG": p.tag,
                 "PEDIDO": p.pedido,
                 "PAGO": p.pago,
@@ -680,25 +684,28 @@
                 "OPERACIONAL": p.operacional
             }));
 
-            if (dadosExportar.length === 0) {
-                alert("Não há dados para exportar.");
+            const worksheet = XLSX.utils.json_to_sheet(dadosExportar);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, `${abaAtual}_${nomeFiltro}`);
+            XLSX.writeFile(workbook, `Controle_Pedidos_${abaAtual}_${nomeFiltro}.xlsx`);
+        });
+
+        // Exportar para PDF (.pdf) respeitando o filtro atual
+        document.getElementById('btnPdf').addEventListener('click', () => {
+            const filtrados = obterDadosFiltradosAtuais();
+            if (filtrados.length === 0) {
+                alert("Não há dados para exportar com o filtro atual.");
                 return;
             }
 
-            const worksheet = XLSX.utils.json_to_sheet(dadosExportar);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, abaAtual);
-            XLSX.writeFile(workbook, `Controle_Pedidos_${abaAtual}.xlsx`);
-        });
+            const nomeFiltroDescricao = statusFiltro === 'paid' ? 'Pagos' : (statusFiltro === 'unpaid' ? 'Não Pagos' : 'Todos');
 
-        // Exportar para PDF (.pdf)
-        document.getElementById('btnPdf').addEventListener('click', () => {
             const { jsPDF } = window.jspdf;
             const docPdf = new jsPDF('l', 'mm', 'a4');
 
-            docPdf.text(`Controle de Pedidos de Compra - ${abaAtual}`, 14, 15);
+            docPdf.text(`Controle de Pedidos - ${abaAtual} (Filtro: ${nomeFiltroDescricao})`, 14, 15);
 
-            const dadosPdf = listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).map(p => [
+            const dadosPdf = filtrados.map(p => [
                 p.tag || '',
                 p.pedido || '',
                 p.pago || '',
@@ -718,7 +725,7 @@
                 styles: { fontSize: 8 }
             });
 
-            docPdf.save(`Controle_Pedidos_${abaAtual}.pdf`);
+            docPdf.save(`Controle_Pedidos_${abaAtual}_${nomeFiltroDescricao}.pdf`);
         });
 
         // Backup (Baixar JSON)
@@ -732,7 +739,7 @@
             downloadAnchor.remove();
         });
 
-        // Restaurar (Carregar arquivo JSON e subir para o Firebase)
+        // Restaurar (Carregar arquivo JSON)
         document.getElementById('btnRestore').addEventListener('click', () => {
             document.getElementById('restoreFile').click();
         });
@@ -765,7 +772,6 @@
             reader.readAsText(file);
         });
 
-        // Inicializar a escuta em tempo real ao carregar a página
         iniciarEscutaTempoReal();
     </script>
 </body>
