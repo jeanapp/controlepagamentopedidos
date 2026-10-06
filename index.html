@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Controle de Pedidos de Compra</title>
+    <!-- Bibliotecas para Excel e PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+
     <style>
         :root {
             --primary-color: #1a252f;
@@ -153,6 +158,11 @@
             background-color: var(--primary-color);
             color: white;
             font-weight: 600;
+            cursor: pointer;
+            user-select: none;
+        }
+        th:hover {
+            background-color: #2c3e50;
         }
         .badge-status {
             padding: 4px 8px;
@@ -169,10 +179,10 @@
             border: none;
             cursor: pointer;
             font-size: 16px;
-            padding: 2px 5px;
+            padding: 2px 4px;
         }
 
-        /* Estilo do Modal de Cadastro */
+        /* Modal */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -189,6 +199,8 @@
             width: 450px;
             max-width: 90%;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            max-height: 90vh;
+            overflow-y: auto;
         }
         .modal-content h3 { margin-top: 0; color: var(--primary-color); }
         .form-group {
@@ -262,6 +274,7 @@
                 <button class="btn-action btn-pdf" id="btnPdf">📄 PDF</button>
                 <button class="btn-action btn-backup" id="btnBackup">💾 Backup</button>
                 <button class="btn-action btn-restore" id="btnRestore">📤 Restaurar</button>
+                <input type="file" id="restoreFile" style="display: none;" accept=".json">
                 <button class="btn-action btn-new" id="btnNovo">+ Novo</button>
             </div>
         </div>
@@ -270,17 +283,17 @@
         <table>
             <thead>
                 <tr>
-                    <th>TAG</th>
-                    <th>PEDIDO</th>
-                    <th>PAGO</th>
-                    <th>VALOR (R$)</th>
-                    <th>DATA</th>
-                    <th>FORNECEDOR</th>
-                    <th>OBSERVAÇÃO DO PEDIDO</th>
-                    <th>TOTAL POR TAG</th>
-                    <th>PRIORIDADE</th>
-                    <th>OBRA</th>
-                    <th>OPERACIONAL</th>
+                    <th data-col="tag">TAG ↕</th>
+                    <th data-col="pedido">PEDIDO ↕</th>
+                    <th data-col="pago">PAGO ↕</th>
+                    <th data-col="valor">VALOR (R$) ↕</th>
+                    <th data-col="data">DATA ↕</th>
+                    <th data-col="fornecedor">FORNECEDOR ↕</th>
+                    <th data-col="observacao">OBSERVAÇÃO DO PEDIDO ↕</th>
+                    <th data-col="totalTag">TOTAL POR TAG ↕</th>
+                    <th data-col="prioridade">PRIORIDADE ↕</th>
+                    <th data-col="obra">OBRA ↕</th>
+                    <th data-col="operacional">OPERACIONAL ↕</th>
                     <th>AÇÕES</th>
                 </tr>
             </thead>
@@ -290,289 +303,7 @@
         </table>
     </div>
 
-    <!-- Modal Novo Pedido -->
+    <!-- Modal de Cadastro / Edição -->
     <div class="modal-overlay" id="modalNovo">
         <div class="modal-content">
-            <h3>➕ Novo Pedido (<span id="modalAbaTitulo">Máquinas</span>)</h3>
-            <div class="form-group">
-                <label>TAG:</label>
-                <input type="text" id="inputTag" placeholder="Ex: CBS01">
-            </div>
-            <div class="form-group">
-                <label>Número do Pedido:</label>
-                <input type="text" id="inputPedido" placeholder="Ex: 2">
-            </div>
-            <div class="form-group">
-                <label>Pago:</label>
-                <select id="inputPago">
-                    <option value="NÃO">NÃO</option>
-                    <option value="SIM">SIM</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Valor (R$):</label>
-                <input type="number" step="0.01" id="inputValor" placeholder="0.00">
-            </div>
-            <div class="form-group">
-                <label>Fornecedor:</label>
-                <input type="text" id="inputFornecedor" placeholder="Nome do Fornecedor">
-            </div>
-            <div class="form-group">
-                <label>Observação do Pedido:</label>
-                <input type="text" id="inputObservacao" placeholder="Ex: PISTÃO FREIO MOTOR">
-            </div>
-            <div class="form-group">
-                <label>Prioridade:</label>
-                <select id="inputPrioridade">
-                    <option value="SIM">SIM</option>
-                    <option value="Normal">Normal</option>
-                </select>
-            </div>
-            <div class="form-group">
-                <label>Obra:</label>
-                <input type="text" id="inputObra" placeholder="Nome da Obra">
-            </div>
-            <div class="form-group">
-                <label>Operacional:</label>
-                <select id="inputOperacional">
-                    <option value="NÃO">NÃO</option>
-                    <option value="SIM">SIM</option>
-                </select>
-            </div>
-            <div class="modal-buttons">
-                <button class="btn-cancelar" id="btnFecharModal">Cancelar</button>
-                <button class="btn-salvar" id="btnSalvarPedido">Salvar Pedido</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Script Firebase e Lógica -->
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-
-        const firebaseConfig = {
-            apiKey: "AIzaSyDbMSVcNWytP1-6feee0eZJ6UFgTYko34I",
-            authDomain: "controle-de-pagamento-pedidos.firebaseapp.com",
-            projectId: "controle-de-pagamento-pedidos",
-            storageBucket: "controle-de-pagamento-pedidos.firebasestorage.app",
-            messagingSenderId: "1011013796860",
-            appId: "1:1011013796860:web:a2b51ba137f29763bde879",
-            measurementId: "G-GNVGXCWN2T"
-        };
-
-        let db = null;
-        let listaGlobalPedidos = [];
-        let abaAtual = 'Máquinas';
-        let statusFiltro = 'all';
-
-        try {
-            const app = initializeApp(firebaseConfig);
-            db = getFirestore(app);
-        } catch (err) {
-            console.error("Erro ao iniciar Firebase:", err);
-        }
-
-        async function carregarPedidos() {
-            if (!db) return;
-            const tbody = document.getElementById('tabelaPedidos');
-            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 20px;">Carregando dados...</td></tr>`;
-            try {
-                const querySnapshot = await getDocs(collection(db, "pedidos"));
-                listaGlobalPedidos = [];
-                querySnapshot.forEach((docSnap) => {
-                    listaGlobalPedidos.push({ id: docSnap.id, ...docSnap.data() });
-                });
-                renderizarTabela();
-            } catch (err) {
-                console.error("Erro ao buscar dados:", err);
-                tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: red; padding: 20px;">Erro ao carregar dados do Firebase.</td></tr>`;
-            }
-        }
-
-        function renderizarTabela() {
-            const tbody = document.getElementById('tabelaPedidos');
-            const busca = document.getElementById('searchInput').value.toLowerCase();
-
-            // Filtrar por aba (Máquinas / Caminhões) baseando-se em algum campo ou por padrão
-            let filtrados = listaGlobalPedidos.filter(p => {
-                const tipo = p.tipo || 'Máquinas';
-                return tipo === abaAtual;
-            });
-
-            // Filtrar por status de pagamento
-            if (statusFiltro === 'paid') {
-                filtrados = filtrados.filter(p => String(p.pago).toUpperCase() === 'SIM');
-            } else if (statusFiltro === 'unpaid') {
-                filtrados = filtrados.filter(p => String(p.pago).toUpperCase() !== 'SIM');
-            }
-
-            // Filtrar por texto de busca
-            if (busca) {
-                filtrados = filtrados.filter(p => {
-                    return Object.values(p).some(val => String(val).toLowerCase().includes(busca));
-                });
-            }
-
-            if (filtrados.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 20px;">Nenhum pedido encontrado.</td></tr>`;
-                document.getElementById('valCount').innerText = 0;
-                document.getElementById('valTotalValor').innerText = 'R$ 0,00';
-                document.getElementById('valTotalPendente').innerText = 'R$ 0,00';
-                return;
-            }
-
-            let totalGeral = 0;
-            let totalPendente = 0;
-
-            tbody.innerHTML = filtrados.map(p => {
-                const valor = parseFloat(p.valor) || 0;
-                totalGeral += valor;
-                if (String(p.pago).toUpperCase() !== 'SIM') {
-                    totalPendente += valor;
-                }
-
-                const isPago = String(p.pago).toUpperCase() === 'SIM';
-                const badgeClass = isPago ? 'badge-sim' : 'badge-nao';
-
-                return `
-                    <tr>
-                        <td>${p.tag || ''}</td>
-                        <td>${p.pedido || ''}</td>
-                        <td><span class="badge-status ${badgeClass}">${p.pago || 'NÃO'}</span></td>
-                        <td>R$ ${valor.toFixed(2)}</td>
-                        <td>${p.data || ''}</td>
-                        <td>${p.fornecedor || ''}</td>
-                        <td>${p.observacao || ''}</td>
-                        <td>-</td>
-                        <td>${p.prioridade || ''}</td>
-                        <td>${p.obra || ''}</td>
-                        <td>${p.operacional || ''}</td>
-                        <td>
-                            <button class="action-icon-btn btn-excluir" data-id="${p.id}" title="Excluir">🗑️</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-
-            document.getElementById('valCount').innerText = filtrados.length;
-            document.getElementById('valTotalValor').innerText = `R$ ${totalGeral.toFixed(2)}`;
-            document.getElementById('valTotalPendente').innerText = `R$ ${totalPendente.toFixed(2)}`;
-
-            // Atribuir eventos de exclusão aos botões da tabela
-            document.querySelectorAll('.btn-excluir').forEach(btn => {
-                btn.addEventListener('click', async (e) => {
-                    const id = e.target.getAttribute('data-id');
-                    if (confirm('Tem certeza que deseja excluir este pedido?')) {
-                        try {
-                            await deleteDoc(doc(db, "pedidos", id));
-                            carregarPedidos();
-                        } catch (err) {
-                            alert('Erro ao excluir pedido.');
-                        }
-                    }
-                });
-            });
-        }
-
-        function switchTab(aba) {
-            abaAtual = aba;
-            document.getElementById('btnMaquinas').classList.toggle('active', aba === 'Máquinas');
-            document.getElementById('btnCaminhoes').classList.toggle('active', aba === 'Caminhões');
-            document.getElementById('lblTituloAba').innerText = aba;
-            document.getElementById('modalAbaTitulo').innerText = aba;
-            document.getElementById('lblTotalCount').innerText = `Total de Pedidos Exibidos (${aba})`;
-            renderizarTabela();
-        }
-
-        // Configurar Event Listeners dos Botões
-        document.getElementById('btnMaquinas').addEventListener('click', () => switchTab('Máquinas'));
-        document.getElementById('btnCaminhoes').addEventListener('click', () => switchTab('Caminhões'));
-
-        document.getElementById('btnNovo').addEventListener('click', () => {
-            document.getElementById('modalNovo').style.display = 'flex';
-        });
-
-        document.getElementById('btnFecharModal').addEventListener('click', () => {
-            document.getElementById('modalNovo').style.display = 'none';
-        });
-
-        document.getElementById('filterAll').addEventListener('click', () => {
-            statusFiltro = 'all';
-            document.getElementById('filterAll').className = 'btn-filter active-all';
-            document.getElementById('filterPaid').className = 'btn-filter';
-            document.getElementById('filterUnpaid').className = 'btn-filter';
-            renderizarTabela();
-        });
-
-        document.getElementById('filterPaid').addEventListener('click', () => {
-            statusFiltro = 'paid';
-            document.getElementById('filterAll').className = 'btn-filter';
-            document.getElementById('filterPaid').className = 'btn-filter active-paid';
-            document.getElementById('filterUnpaid').className = 'btn-filter';
-            renderizarTabela();
-        });
-
-        document.getElementById('filterUnpaid').addEventListener('click', () => {
-            statusFiltro = 'unpaid';
-            document.getElementById('filterAll').className = 'btn-filter';
-            document.getElementById('filterPaid').className = 'btn-filter';
-            document.getElementById('filterUnpaid').className = 'btn-filter active-unpaid';
-            renderizarTabela();
-        });
-
-        document.getElementById('searchInput').addEventListener('input', renderizarTabela);
-
-        document.getElementById('btnSalvarPedido').addEventListener('click', async () => {
-            const tag = document.getElementById('inputTag').value;
-            const pedido = document.getElementById('inputPedido').value;
-            const pago = document.getElementById('inputPago').value;
-            const valor = parseFloat(document.getElementById('inputValor').value) || 0;
-            const fornecedor = document.getElementById('inputFornecedor').value;
-            const observacao = document.getElementById('inputObservacao').value;
-            const prioridade = document.getElementById('inputPrioridade').value;
-            const obra = document.getElementById('inputObra').value;
-            const operacional = document.getElementById('inputOperacional').value;
-            const data = new Date().toLocaleDateString('pt-BR');
-
-            if (!tag || !pedido) {
-                alert('Preencha pelo menos a TAG e o Número do Pedido.');
-                return;
-            }
-
-            try {
-                await addDoc(collection(db, "pedidos"), {
-                    tipo: abaAtual,
-                    tag,
-                    pedido,
-                    pago,
-                    valor,
-                    fornecedor,
-                    observacao,
-                    prioridade,
-                    obra,
-                    operacional,
-                    data
-                });
-
-                document.getElementById('modalNovo').style.display = 'none';
-                // Limpar campos
-                document.getElementById('inputTag').value = '';
-                document.getElementById('inputPedido').value = '';
-                document.getElementById('inputValor').value = '';
-                document.getElementById('inputFornecedor').value = '';
-                document.getElementById('inputObservacao').value = '';
-                document.getElementById('inputObra').value = '';
-
-                carregarPedidos();
-            } catch (err) {
-                console.error("Erro ao salvar:", err);
-                alert('Erro ao guardar o pedido no Firebase.');
-            }
-        });
-
-        // Inicializar carregamento
-        carregarPedidos();
-    </script>
-</body>
-</html>
+            <h3 id="modalTituloText">➕ Novo Pedido (<
