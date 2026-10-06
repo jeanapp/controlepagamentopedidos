@@ -306,4 +306,461 @@
     <!-- Modal de Cadastro / Edição -->
     <div class="modal-overlay" id="modalNovo">
         <div class="modal-content">
-            <h3 id="modalTituloText">➕ Novo Pedido (<
+            <h3 id="modalTituloText">➕ Novo Pedido (<span id="modalAbaTitulo">Máquinas</span>)</h3>
+            <input type="hidden" id="editId">
+            <div class="form-group">
+                <label>TAG:</label>
+                <input type="text" id="inputTag" placeholder="Ex: CBS01">
+            </div>
+            <div class="form-group">
+                <label>Número do Pedido:</label>
+                <input type="text" id="inputPedido" placeholder="Ex: 2">
+            </div>
+            <div class="form-group">
+                <label>Pago:</label>
+                <select id="inputPago">
+                    <option value="NÃO">NÃO</option>
+                    <option value="SIM">SIM</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Valor (R$):</label>
+                <input type="number" step="0.01" id="inputValor" placeholder="0.00">
+            </div>
+            <div class="form-group">
+                <label>Fornecedor:</label>
+                <input type="text" id="inputFornecedor" placeholder="Nome do Fornecedor">
+            </div>
+            <div class="form-group">
+                <label>Observação do Pedido:</label>
+                <input type="text" id="inputObservacao" placeholder="Ex: PISTÃO FREIO MOTOR">
+            </div>
+            <div class="form-group">
+                <label>Prioridade:</label>
+                <select id="inputPrioridade">
+                    <option value="SIM">SIM</option>
+                    <option value="Normal">Normal</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Obra:</label>
+                <input type="text" id="inputObra" placeholder="Nome da Obra">
+            </div>
+            <div class="form-group">
+                <label>Operacional:</label>
+                <select id="inputOperacional">
+                    <option value="NÃO">NÃO</option>
+                    <option value="SIM">SIM</option>
+                </select>
+            </div>
+            <div class="modal-buttons">
+                <button class="btn-cancelar" id="btnFecharModal">Cancelar</button>
+                <button class="btn-salvar" id="btnSalvarPedido">Salvar Pedido</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Firebase e Lógica -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyDbMSVcNWytP1-6feee0eZJ6UFgTYko34I",
+            authDomain: "controle-de-pagamento-pedidos.firebaseapp.com",
+            projectId: "controle-de-pagamento-pedidos",
+            storageBucket: "controle-de-pagamento-pedidos.firebasestorage.app",
+            messagingSenderId: "1011013796860",
+            appId: "1:1011013796860:web:a2b51ba137f29763bde879",
+            measurementId: "G-GNVGXCWN2T"
+        };
+
+        let db = null;
+        let listaGlobalPedidos = [];
+        let abaAtual = 'Máquinas';
+        let statusFiltro = 'all';
+        let ordenacaoColuna = null;
+        let ordenacaoAsc = true;
+
+        try {
+            const app = initializeApp(firebaseConfig);
+            db = getFirestore(app);
+        } catch (err) {
+            console.error("Erro ao iniciar Firebase:", err);
+        }
+
+        async function carregarPedidos() {
+            if (!db) return;
+            const tbody = document.getElementById('tabelaPedidos');
+            tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 20px;">Carregando dados...</td></tr>`;
+            try {
+                const querySnapshot = await getDocs(collection(db, "pedidos"));
+                listaGlobalPedidos = [];
+                querySnapshot.forEach((docSnap) => {
+                    listaGlobalPedidos.push({ id: docSnap.id, ...docSnap.data() });
+                });
+                renderizarTabela();
+            } catch (err) {
+                console.error("Erro ao buscar dados:", err);
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; color: red; padding: 20px;">Erro ao carregar dados do Firebase.</td></tr>`;
+            }
+        }
+
+        function renderizarTabela() {
+            const tbody = document.getElementById('tabelaPedidos');
+            const busca = document.getElementById('searchInput').value.toLowerCase();
+
+            let filtrados = listaGlobalPedidos.filter(p => {
+                const tipo = p.tipo || 'Máquinas';
+                return tipo === abaAtual;
+            });
+
+            if (statusFiltro === 'paid') {
+                filtrados = filtrados.filter(p => String(p.pago).toUpperCase() === 'SIM');
+            } else if (statusFiltro === 'unpaid') {
+                filtrados = filtrados.filter(p => String(p.pago).toUpperCase() !== 'SIM');
+            }
+
+            if (busca) {
+                filtrados = filtrados.filter(p => {
+                    return Object.values(p).some(val => String(val).toLowerCase().includes(busca));
+                });
+            }
+
+            // Calcular o Total por Tag (Soma dos valores dos pedidos da mesma TAG na aba atual)
+            const totaisPorTag = {};
+            listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).forEach(p => {
+                const tag = (p.tag || '').trim().toUpperCase();
+                const val = parseFloat(p.valor) || 0;
+                if (tag) {
+                    totaisPorTag[tag] = (totaisPorTag[tag] || 0) + val;
+                }
+            });
+
+            // Ordenação A-Z / Z-A ao clicar nos títulos
+            if (ordenacaoColuna) {
+                filtrados.sort((a, b) => {
+                    let valA, valB;
+                    if (ordenacaoColuna === 'totalTag') {
+                        valA = totaisPorTag[(a.tag || '').trim().toUpperCase()] || 0;
+                        valB = totaisPorTag[(b.tag || '').trim().toUpperCase()] || 0;
+                    } else if (ordenacaoColuna === 'valor') {
+                        valA = parseFloat(a.valor) || 0;
+                        valB = parseFloat(b.valor) || 0;
+                    } else {
+                        valA = String(a[ordenacaoColuna] || '').toLowerCase();
+                        valB = String(b[ordenacaoColuna] || '').toLowerCase();
+                    }
+
+                    if (valA < valB) return ordenacaoAsc ? -1 : 1;
+                    if (valA > valB) return ordenacaoAsc ? 1 : -1;
+                    return 0;
+                });
+            }
+
+            if (filtrados.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 20px;">Nenhum pedido encontrado.</td></tr>`;
+                document.getElementById('valCount').innerText = 0;
+                document.getElementById('valTotalValor').innerText = 'R$ 0,00';
+                document.getElementById('valTotalPendente').innerText = 'R$ 0,00';
+                return;
+            }
+
+            let totalGeral = 0;
+            let totalPendente = 0;
+
+            tbody.innerHTML = filtrados.map(p => {
+                const valor = parseFloat(p.valor) || 0;
+                totalGeral += valor;
+                if (String(p.pago).toUpperCase() !== 'SIM') {
+                    totalPendente += valor;
+                }
+
+                const isPago = String(p.pago).toUpperCase() === 'SIM';
+                const badgeClass = isPago ? 'badge-sim' : 'badge-nao';
+                const tagKey = (p.tag || '').trim().toUpperCase();
+                const totalTagVal = totaisPorTag[tagKey] || 0;
+
+                return `
+                    <tr>
+                        <td>${p.tag || ''}</td>
+                        <td>${p.pedido || ''}</td>
+                        <td><span class="badge-status ${badgeClass}">${p.pago || 'NÃO'}</span></td>
+                        <td>R$ ${valor.toFixed(2)}</td>
+                        <td>${p.data || ''}</td>
+                        <td>${p.fornecedor || ''}</td>
+                        <td>${p.observacao || ''}</td>
+                        <td>R$ ${totalTagVal.toFixed(2)}</td>
+                        <td>${p.prioridade || ''}</td>
+                        <td>${p.obra || ''}</td>
+                        <td>${p.operacional || ''}</td>
+                        <td>
+                            <button class="action-icon-btn btn-editar" data-id="${p.id}" title="Editar">✏️</button>
+                            <button class="action-icon-btn btn-excluir" data-id="${p.id}" title="Excluir">🗑️</button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            document.getElementById('valCount').innerText = filtrados.length;
+            document.getElementById('valTotalValor').innerText = `R$ ${totalGeral.toFixed(2)}`;
+            document.getElementById('valTotalPendente').innerText = `R$ ${totalPendente.toFixed(2)}`;
+
+            // Eventos de Editar
+            document.querySelectorAll('.btn-editar').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    const pedidoObj = listaGlobalPedidos.find(item => item.id === id);
+                    if (pedidoObj) {
+                        document.getElementById('editId').value = pedidoObj.id;
+                        document.getElementById('inputTag').value = pedidoObj.tag || '';
+                        document.getElementById('inputPedido').value = pedidoObj.pedido || '';
+                        document.getElementById('inputPago').value = pedidoObj.pago || 'NÃO';
+                        document.getElementById('inputValor').value = pedidoObj.valor || '';
+                        document.getElementById('inputFornecedor').value = pedidoObj.fornecedor || '';
+                        document.getElementById('inputObservacao').value = pedidoObj.observacao || '';
+                        document.getElementById('inputPrioridade').value = pedidoObj.prioridade || 'Normal';
+                        document.getElementById('inputObra').value = pedidoObj.obra || '';
+                        document.getElementById('inputOperacional').value = pedidoObj.operacional || 'NÃO';
+                        
+                        document.getElementById('modalTituloText').innerHTML = `✏️ Editar Pedido (<span id="modalAbaTitulo">${abaAtual}</span>)`;
+                        document.getElementById('modalNovo').style.display = 'flex';
+                    }
+                });
+            });
+
+            // Eventos de Excluir
+            document.querySelectorAll('.btn-excluir').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    const id = e.currentTarget.getAttribute('data-id');
+                    if (confirm('Tem certeza que deseja excluir este pedido?')) {
+                        try {
+                            await deleteDoc(doc(db, "pedidos", id));
+                            carregarPedidos();
+                        } catch (err) {
+                            alert('Erro ao excluir pedido.');
+                        }
+                    }
+                });
+            });
+        }
+
+        function switchTab(aba) {
+            abaAtual = aba;
+            document.getElementById('btnMaquinas').classList.toggle('active', aba === 'Máquinas');
+            document.getElementById('btnCaminhoes').classList.toggle('active', aba === 'Caminhões');
+            document.getElementById('lblTituloAba').innerText = aba;
+            document.getElementById('modalAbaTitulo').innerText = aba;
+            document.getElementById('lblTotalCount').innerText = `Total de Pedidos Exibidos (${aba})`;
+            renderizarTabela();
+        }
+
+        // Ordenação por Coluna
+        document.querySelectorAll('th[data-col]').forEach(th => {
+            th.addEventListener('click', () => {
+                const col = th.getAttribute('data-col');
+                if (ordenacaoColuna === col) {
+                    ordenacaoAsc = !ordenacaoAsc;
+                } else {
+                    ordenacaoColuna = col;
+                    ordenacaoAsc = true;
+                }
+                renderizarTabela();
+            });
+        });
+
+        // Botões de Abas e Modal
+        document.getElementById('btnMaquinas').addEventListener('click', () => switchTab('Máquinas'));
+        document.getElementById('btnCaminhoes').addEventListener('click', () => switchTab('Caminhões'));
+
+        document.getElementById('btnNovo').addEventListener('click', () => {
+            document.getElementById('editId').value = '';
+            document.getElementById('inputTag').value = '';
+            document.getElementById('inputPedido').value = '';
+            document.getElementById('inputPago').value = 'NÃO';
+            document.getElementById('inputValor').value = '';
+            document.getElementById('inputFornecedor').value = '';
+            document.getElementById('inputObservacao').value = '';
+            document.getElementById('inputPrioridade').value = 'SIM';
+            document.getElementById('inputObra').value = '';
+            document.getElementById('inputOperacional').value = 'NÃO';
+            document.getElementById('modalTituloText').innerHTML = `➕ Novo Pedido (<span id="modalAbaTitulo">${abaAtual}</span>)`;
+            document.getElementById('modalNovo').style.display = 'flex';
+        });
+
+        document.getElementById('btnFecharModal').addEventListener('click', () => {
+            document.getElementById('modalNovo').style.display = 'none';
+        });
+
+        // Filtros
+        document.getElementById('filterAll').addEventListener('click', () => {
+            statusFiltro = 'all';
+            document.getElementById('filterAll').className = 'btn-filter active-all';
+            document.getElementById('filterPaid').className = 'btn-filter';
+            document.getElementById('filterUnpaid').className = 'btn-filter';
+            renderizarTabela();
+        });
+
+        document.getElementById('filterPaid').addEventListener('click', () => {
+            statusFiltro = 'paid';
+            document.getElementById('filterAll').className = 'btn-filter';
+            document.getElementById('filterPaid').className = 'btn-filter active-paid';
+            document.getElementById('filterUnpaid').className = 'btn-filter';
+            renderizarTabela();
+        });
+
+        document.getElementById('filterUnpaid').addEventListener('click', () => {
+            statusFiltro = 'unpaid';
+            document.getElementById('filterAll').className = 'btn-filter';
+            document.getElementById('filterPaid').className = 'btn-filter';
+            document.getElementById('filterUnpaid').className = 'btn-filter active-unpaid';
+            renderizarTabela();
+        });
+
+        document.getElementById('searchInput').addEventListener('input', renderizarTabela);
+
+        // Salvar ou Atualizar Pedido
+        document.getElementById('btnSalvarPedido').addEventListener('click', async () => {
+            const editId = document.getElementById('editId').value;
+            const tag = document.getElementById('inputTag').value;
+            const pedido = document.getElementById('inputPedido').value;
+            const pago = document.getElementById('inputPago').value;
+            const valor = parseFloat(document.getElementById('inputValor').value) || 0;
+            const fornecedor = document.getElementById('inputFornecedor').value;
+            const observacao = document.getElementById('inputObservacao').value;
+            const prioridade = document.getElementById('inputPrioridade').value;
+            const obra = document.getElementById('inputObra').value;
+            const operacional = document.getElementById('inputOperacional').value;
+            const data = new Date().toLocaleDateString('pt-BR');
+
+            if (!tag || !pedido) {
+                alert('Preencha pelo menos a TAG e o Número do Pedido.');
+                return;
+            }
+
+            try {
+                if (editId) {
+                    await updateDoc(doc(db, "pedidos", editId), {
+                        tag, pedido, pago, valor, fornecedor, observacao, prioridade, obra, operacional
+                    });
+                } else {
+                    await addDoc(collection(db, "pedidos"), {
+                        tipo: abaAtual,
+                        tag, pedido, pago, valor, fornecedor, observacao, prioridade, obra, operacional, data
+                    });
+                }
+
+                document.getElementById('modalNovo').style.display = 'none';
+                carregarPedidos();
+            } catch (err) {
+                console.error("Erro ao salvar:", err);
+                alert('Erro ao guardar o pedido no Firebase.');
+            }
+        });
+
+        // Exportar para Excel (.xlsx)
+        document.getElementById('btnExcel').addEventListener('click', () => {
+            const dadosExportar = listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).map(p => ({
+                "TAG": p.tag,
+                "PEDIDO": p.pedido,
+                "PAGO": p.pago,
+                "VALOR (R$)": p.valor,
+                "DATA": p.data,
+                "FORNECEDOR": p.fornecedor,
+                "OBSERVAÇÃO": p.observacao,
+                "PRIORIDADE": p.prioridade,
+                "OBRA": p.obra,
+                "OPERACIONAL": p.operacional
+            }));
+
+            if (dadosExportar.length === 0) {
+                alert("Não há dados para exportar.");
+                return;
+            }
+
+            const worksheet = XLSX.utils.json_to_sheet(dadosExportar);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, abaAtual);
+            XLSX.writeFile(workbook, `Controle_Pedidos_${abaAtual}.xlsx`);
+        });
+
+        // Exportar para PDF (.pdf)
+        document.getElementById('btnPdf').addEventListener('click', () => {
+            const { jsPDF } = window.jspdf;
+            const docPdf = new jsPDF('l', 'mm', 'a4');
+
+            docPdf.text(`Controle de Pedidos de Compra - ${abaAtual}`, 14, 15);
+
+            const dadosPdf = listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).map(p => [
+                p.tag || '',
+                p.pedido || '',
+                p.pago || '',
+                `R$ ${parseFloat(p.valor || 0).toFixed(2)}`,
+                p.data || '',
+                p.fornecedor || '',
+                p.observacao || '',
+                p.prioridade || '',
+                p.obra || '',
+                p.operacional || ''
+            ]);
+
+            docPdf.autoTable({
+                head: [['TAG', 'PEDIDO', 'PAGO', 'VALOR', 'DATA', 'FORNECEDOR', 'OBSERVAÇÃO', 'PRIORIDADE', 'OBRA', 'OPERACIONAL']],
+                body: dadosPdf,
+                startY: 20,
+                styles: { fontSize: 8 }
+            });
+
+            docPdf.save(`Controle_Pedidos_${abaAtual}.pdf`);
+        });
+
+        // Backup (Baixar JSON)
+        document.getElementById('btnBackup').addEventListener('click', () => {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(listaGlobalPedidos, null, 2));
+            const downloadAnchor = document.createElement('a');
+            downloadAnchor.setAttribute("href", dataStr);
+            downloadAnchor.setAttribute("download", `backup_pedidos_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(downloadAnchor);
+            downloadAnchor.click();
+            downloadAnchor.remove();
+        });
+
+        // Restaurar (Carregar arquivo JSON e subir para o Firebase)
+        document.getElementById('btnRestore').addEventListener('click', () => {
+            document.getElementById('restoreFile').click();
+        });
+
+        document.getElementById('restoreFile').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const dadosRestaurar = JSON.parse(e.target.result);
+                    if (!Array.isArray(dadosRestaurar)) {
+                        alert("Arquivo de backup inválido.");
+                        return;
+                    }
+
+                    if (confirm(`Tem certeza que deseja restaurar ${dadosRestaurar.length} pedidos? Isto irá adicionar os registros ao banco de dados.`)) {
+                        for (let item of dadosRestaurar) {
+                            delete item.id; // remover ID antigo para gerar novo no Firestore
+                            await addDoc(collection(db, "pedidos"), item);
+                        }
+                        alert("Backup restaurado com sucesso!");
+                        carregarPedidos();
+                    }
+                } catch (err) {
+                    console.error("Erro ao ler JSON:", err);
+                    alert("Erro ao processar o arquivo de backup.");
+                }
+            };
+            reader.readAsText(file);
+        });
+
+        // Inicializar carregamento
+        carregarPedidos();
+    </script>
+</body>
+</html>
