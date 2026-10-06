@@ -127,12 +127,19 @@
             align-items: center;
             margin-bottom: 15px;
         }
-        .toolbar-left, .toolbar-right {
+        .toolbar-left {
             display: flex;
             gap: 8px;
             align-items: center;
             flex-wrap: wrap;
-            width: 100%;
+            flex: 1;
+        }
+        .toolbar-right {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap;
+            width: auto;
         }
         .search-box {
             padding: 8px 12px;
@@ -161,7 +168,7 @@
         .btn-filter.active-unpaid { background: var(--danger-color); color: white; border-color: var(--danger-color); }
         
         .btn-action {
-            padding: 8px 12px;
+            padding: 7px 12px;
             border: none;
             border-radius: 4px;
             color: white;
@@ -169,15 +176,18 @@
             cursor: pointer;
             font-size: 12px;
             box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            flex: 1;
-            min-width: 110px;
+            width: auto;
+            min-width: auto;
             text-align: center;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
         }
         .btn-excel { background: #059669; }
         .btn-pdf { background: #dc2626; }
         .btn-backup { background: #4b5563; }
         .btn-restore { background: #d97706; }
-        .btn-new { background: var(--bi-secondary); min-width: 100%; font-size: 14px; padding: 10px; }
+        .btn-new { background: var(--bi-secondary); font-size: 13px; padding: 7px 14px; width: auto; }
 
         /* Container de Rolagem da Tabela para Celular */
         .table-responsive {
@@ -281,7 +291,7 @@
         }
         .form-group input, .form-group select {
             width: 100%;
-            padding: 10px; /* Melhor para toque no celular */
+            padding: 10px;
             border: 1px solid var(--bi-border);
             border-radius: 4px;
             box-sizing: border-box;
@@ -300,15 +310,12 @@
         /* Media Queries para telas maiores (Desktop) */
         @media (min-width: 768px) {
             .summary-cards { grid-template-columns: repeat(3, 1fr); }
-            .toolbar-left { width: auto; flex: 1; }
-            .toolbar-right { width: auto; }
-            .btn-new { min-width: auto; font-size: 13px; padding: 8px 14px; }
             header h1 { font-size: 18px; }
         }
 
         @media (max-width: 767px) {
             .summary-cards {
-                grid-template-columns: 1fr; /* Cards empilhados no celular */
+                grid-template-columns: 1fr;
             }
         }
     </style>
@@ -322,7 +329,7 @@
     <div class="main-container">
         <!-- Abas -->
         <div class="tabs">
-            <button class="tab-btn active" id="btnMaquinas">⚙️ Máquinas</button>
+            <button class="tab-btn active" id="btnMaquinas">⚙️️ Máquinas</button>
             <button class="tab-btn" id="btnCaminhoes">🚛 Caminhões</button>
         </div>
 
@@ -350,19 +357,17 @@
                 <button class="btn-filter" id="filterPaid">Pagos</button>
                 <button class="btn-filter" id="filterUnpaid">Pendentes</button>
             </div>
-            <div class="toolbar-right" style="width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px;">
+            <div class="toolbar-right">
                 <button class="btn-action btn-excel" id="btnExcel">📊 Excel</button>
                 <button class="btn-action btn-pdf" id="btnPdf">📄 PDF</button>
                 <button class="btn-action btn-backup" id="btnBackup">💾 Backup</button>
                 <button class="btn-action btn-restore" id="btnRestore">📤 Restaurar</button>
                 <input type="file" id="restoreFile" style="display: none;" accept=".json">
-            </div>
-            <div style="width: 100%; margin-top: 5px;">
                 <button class="btn-action btn-new" id="btnNovo">+ Novo Registro</button>
             </div>
         </div>
 
-        <!-- Matriz / Tabela com Rolagem Lateral (Essencial para Mobile) -->
+        <!-- Matriz / Tabela com Rolagem Lateral -->
         <div class="table-responsive">
             <table>
                 <thead>
