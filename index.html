@@ -483,6 +483,11 @@
             console.error("Erro ao iniciar Firebase:", err);
         }
 
+        // Função auxiliar para formatar valores em BRL (R$ 1.234,56)
+        function formatarMoedaBRL(valor) {
+            return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+        }
+
         function iniciarEscutaTempoReal() {
             if (!db) return;
             const tbody = document.getElementById('tabelaPedidos');
@@ -568,8 +573,8 @@
             if (filtrados.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 25px; color: var(--bi-gray);">Nenhum registro encontrado.</td></tr>`;
                 document.getElementById('valCount').innerText = 0;
-                document.getElementById('valTotalValor').innerText = 'R$ 0,00';
-                document.getElementById('valTotalPendente').innerText = 'R$ 0,00';
+                document.getElementById('valTotalValor').innerText = formatarMoedaBRL(0);
+                document.getElementById('valTotalPendente').innerText = formatarMoedaBRL(0);
                 return;
             }
 
@@ -593,11 +598,11 @@
                         <td>${p.tag || ''}</td>
                         <td>${p.pedido || ''}</td>
                         <td><span class="badge-status ${badgeClass}">${p.pago || 'NÃO'}</span></td>
-                        <td>R$ ${valor.toFixed(2)}</td>
+                        <td>${formatarMoedaBRL(valor)}</td>
                         <td>${p.data || ''}</td>
                         <td>${p.fornecedor || ''}</td>
                         <td>${p.observacao || ''}</td>
-                        <td>R$ ${totalTagVal.toFixed(2)}</td>
+                        <td>${formatarMoedaBRL(totalTagVal)}</td>
                         <td>${p.prioridade || ''}</td>
                         <td>${p.obra || ''}</td>
                         <td>${p.operacional || ''}</td>
@@ -610,8 +615,8 @@
             }).join('');
 
             document.getElementById('valCount').innerText = filtrados.length;
-            document.getElementById('valTotalValor').innerText = `R$ ${totalGeral.toFixed(2)}`;
-            document.getElementById('valTotalPendente').innerText = `R$ ${totalPendente.toFixed(2)}`;
+            document.getElementById('valTotalValor').innerText = formatarMoedaBRL(totalGeral);
+            document.getElementById('valTotalPendente').innerText = formatarMoedaBRL(totalPendente);
 
             document.querySelectorAll('.btn-editar').forEach(btn => {
                 btn.addEventListener('click', (e) => {
@@ -771,11 +776,11 @@
                     "TAG": p.tag,
                     "PEDIDO": p.pedido,
                     "PAGO": p.pago,
-                    "VALOR (R$)": parseFloat(p.valor) || 0,
+                    "VALOR (R$)": formatarMoedaBRL(parseFloat(p.valor) || 0),
                     "DATA": p.data,
                     "FORNECEDOR": p.fornecedor,
                     "OBSERVAÇÃO": p.observacao,
-                    "TOTAL TAG (R$)": totaisPorTag[tagKey] || 0,
+                    "TOTAL TAG (R$)": formatarMoedaBRL(totaisPorTag[tagKey] || 0),
                     "PRIORIDADE": p.prioridade,
                     "OBRA": p.obra,
                     "OPERACIONAL": p.operacional
@@ -809,11 +814,11 @@
                     p.tag || '',
                     p.pedido || '',
                     p.pago || '',
-                    `R$ ${parseFloat(p.valor || 0).toFixed(2)}`,
+                    formatarMoedaBRL(parseFloat(p.valor || 0)),
                     p.data || '',
                     p.fornecedor || '',
                     p.observacao || '',
-                    `R$ ${totalTagVal.toFixed(2)}`,
+                    formatarMoedaBRL(totalTagVal),
                     p.prioridade || '',
                     p.obra || '',
                     p.operacional || ''
@@ -831,7 +836,7 @@
                     let finalY = data.cursor.y + 10;
                     docPdf.setFontSize(10);
                     docPdf.setFont("helvetica", "bold");
-                    docPdf.text(`VALOR TOTAL: R$ ${valorTotalGeral.toFixed(2)}`, 14, finalY);
+                    docPdf.text(`VALOR TOTAL: ${formatarMoedaBRL(valorTotalGeral)}`, 14, finalY);
                 }
             });
 
