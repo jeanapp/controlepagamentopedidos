@@ -329,7 +329,7 @@
     <div class="main-container">
         <!-- Abas -->
         <div class="tabs">
-            <button class="tab-btn active" id="btnMaquinas">⚙️️ Máquinas</button>
+            <button class="tab-btn active" id="btnMaquinas">⚙ Máquinas</button>
             <button class="tab-btn" id="btnCaminhoes">🚛 Caminhões</button>
         </div>
 
@@ -500,7 +500,7 @@
             });
         }
 
-        function obterDadosFiltradosAtuais() {
+        function obterDadosFiltradosEOrdenadosAtuais() {
             let filtrados = listaGlobalPedidos.filter(p => {
                 const tipo = p.tipo || 'Máquinas';
                 return tipo === abaAtual;
@@ -518,13 +518,8 @@
                     return Object.values(p).some(val => String(val).toLowerCase().includes(busca));
                 });
             }
-            return filtrados;
-        }
 
-        function renderizarTabela() {
-            const tbody = document.getElementById('tabelaPedidos');
-            let filtrados = obterDadosFiltradosAtuais();
-
+            // Calcular totais por tag para ordenação se necessário
             const totaisPorTag = {};
             listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).forEach(p => {
                 const tag = (p.tag || '').trim().toUpperCase();
@@ -542,6 +537,7 @@
                 }
             });
 
+            // Aplicar ordenação ativa se houver
             if (ordenacaoColuna) {
                 filtrados.sort((a, b) => {
                     let valA, valB;
@@ -561,6 +557,13 @@
                     return 0;
                 });
             }
+
+            return { filtrados, totaisPorTag };
+        }
+
+        function renderizarTabela() {
+            const tbody = document.getElementById('tabelaPedidos');
+            const { filtrados, totaisPorTag } = obterDadosFiltradosEOrdenadosAtuais();
 
             if (filtrados.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="12" style="text-align: center; padding: 25px; color: var(--bi-gray);">Nenhum registro encontrado.</td></tr>`;
@@ -754,7 +757,7 @@
         });
 
         document.getElementById('btnExcel').addEventListener('click', () => {
-            const filtrados = obterDadosFiltradosAtuais();
+            const { filtrados, totaisPorTag } = obterDadosFiltradosEOrdenadosAtuais();
             if (filtrados.length === 0) {
                 alert("Não há dados para exportar com o filtro atual.");
                 return;
@@ -762,18 +765,22 @@
 
             const nomeFiltro = statusFiltro === 'paid' ? 'Pagos' : (statusFiltro === 'unpaid' ? 'Nao_Pagos' : 'Todos');
 
-            const dadosExportar = filtrados.map(p => ({
-                "TAG": p.tag,
-                "PEDIDO": p.pedido,
-                "PAGO": p.pago,
-                "VALOR (R$)": p.valor,
-                "DATA": p.data,
-                "FORNECEDOR": p.fornecedor,
-                "OBSERVAÇÃO": p.observacao,
-                "PRIORIDADE": p.prioridade,
-                "OBRA": p.obra,
-                "OPERACIONAL": p.operacional
-            }));
+            const dadosExportar = filtrados.map(p => {
+                const tagKey = (p.tag || '').trim().toUpperCase();
+                return {
+                    "TAG": p.tag,
+                    "PEDIDO": p.pedido,
+                    "PAGO": p.pago,
+                    "VALOR (R$)": parseFloat(p.valor) || 0,
+                    "DATA": p.data,
+                    "FORNECEDOR": p.fornecedor,
+                    "OBSERVAÇÃO": p.observacao,
+                    "TOTAL TAG (R$)": totaisPorTag[tagKey] || 0,
+                    "PRIORIDADE": p.prioridade,
+                    "OBRA": p.obra,
+                    "OPERACIONAL": p.operacional
+                };
+            });
 
             const worksheet = XLSX.utils.json_to_sheet(dadosExportar);
             const workbook = XLSX.utils.book_new();
@@ -782,7 +789,7 @@
         });
 
         document.getElementById('btnPdf').addEventListener('click', () => {
-            const filtrados = obterDadosFiltradosAtuais();
+            const { filtrados, totaisPorTag } = obterDadosFiltradosEOrdenadosAtuais();
             if (filtrados.length === 0) {
                 alert("Não há dados para exportar com o filtro atual.");
                 return;
@@ -795,26 +802,31 @@
 
             docPdf.text(`Relatório Gerencial - ${abaAtual} (Filtro: ${nomeFiltroDescricao})`, 14, 15);
 
-            const dadosPdf = filtrados.map(p => [
-                p.tag || '',
-                p.pedido || '',
-                p.pago || '',
-                `R$ ${parseFloat(p.valor || 0).toFixed(2)}`,
-                p.data || '',
-                p.fornecedor || '',
-                p.observacao || '',
-                p.prioridade || '',
-                p.obra || '',
-                p.operacional || ''
-            ]);
+            const dadosPdf = filtrados.map(p => {
+                const tagKey = (p.tag || '').trim().toUpperCase();
+                const totalTagVal = totaisPorTag[tagKey] || 0;
+                return [
+                    p.tag || '',
+                    p.pedido || '',
+                    p.pago || '',
+                    `R$ ${parseFloat(p.valor || 0).toFixed(2)}`,
+                    p.data || '',
+                    p.fornecedor || '',
+                    p.observacao || '',
+                    `R$ ${totalTagVal.toFixed(2)}`,
+                    p.prioridade || '',
+                    p.obra || '',
+                    p.operacional || ''
+                ];
+            });
 
             let valorTotalGeral = filtrados.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
 
             docPdf.autoTable({
-                head: [['TAG', 'PEDIDO', 'PAGO', 'VALOR', 'DATA', 'FORNECEDOR', 'OBSERVAÇÃO', 'PRIORIDADE', 'OBRA', 'OPERACIONAL']],
+                head: [['TAG', 'PEDIDO', 'PAGO', 'VALOR', 'DATA', 'FORNECEDOR', 'OBSERVAÇÃO', 'TOTAL TAG', 'PRIORIDADE', 'OBRA', 'OPERACIONAL']],
                 body: dadosPdf,
                 startY: 20,
-                styles: { fontSize: 8 },
+                styles: { fontSize: 7 },
                 didDrawPage: function (data) {
                     let finalY = data.cursor.y + 10;
                     docPdf.setFontSize(10);
