@@ -53,6 +53,69 @@
             padding: 0 12px;
         }
         
+        /* Ecrã de Login / Senha Única */
+        #loginScreen {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+        .login-card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 100%;
+            max-width: 380px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            border-top: 5px solid var(--bi-primary);
+            text-align: center;
+            box-sizing: border-box;
+        }
+        .login-card h2 {
+            margin-top: 0;
+            color: var(--bi-primary);
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+        .login-card input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--bi-border);
+            border-radius: 4px;
+            box-sizing: border-box;
+            font-size: 15px;
+            margin-bottom: 15px;
+            outline: none;
+            text-align: center;
+            letter-spacing: 2px;
+        }
+        .login-card button {
+            width: 100%;
+            padding: 12px;
+            background: var(--bi-secondary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .login-card button:hover {
+            background: #2563eb;
+        }
+        .login-error {
+            color: var(--danger-color);
+            font-size: 12px;
+            margin-top: 10px;
+            display: none;
+            font-weight: 600;
+        }
+
         /* Abas Estilo Report Pages */
         .tabs {
             display: flex;
@@ -309,20 +372,28 @@
         .btn-cancelar { background: #9ca3af; color: white; padding: 10px 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; }
         .btn-salvar { background: var(--success-color); color: white; padding: 10px 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 13px; }
 
-        /* Media Queries para ecrãs maiores (Desktop) */
         @media (min-width: 768px) {
             .summary-cards { grid-template-columns: repeat(3, 1fr); }
             header h1 { font-size: 18px; }
         }
 
         @media (max-width: 767px) {
-            .summary-cards {
-                grid-template-columns: 1fr;
-            }
+            .summary-cards { grid-template-columns: 1fr; }
         }
     </style>
 </head>
 <body>
+
+    <!-- Ecrã de Login / Senha Única -->
+    <div id="loginScreen">
+        <div class="login-card">
+            <h2>🔒 Área Restrita</h2>
+            <p style="font-size: 12px; color: var(--bi-gray); margin-bottom: 15px;">Digite a senha de acesso para visualizar o painel.</p>
+            <input type="password" id="inputSenhaAcesso" placeholder="Senha">
+            <button id="btnEntrarSistema">Entrar</button>
+            <div id="loginErrorMsg" class="login-error">Senha incorreta! Tente novamente.</div>
+        </div>
+    </div>
 
     <header>
         <h1>📊 Controle de Pagamentos de Pedido de Compra</h1>
@@ -370,26 +441,26 @@
             </div>
         </div>
 
-        <!-- Matriz / Tabela com Rolagem Lateral -->
+        <!-- Tabela -->
         <div class="table-responsive">
             <table>
                 <thead>
-    <tr>
-        <th data-col="tag">TAG ↕</th>
-        <th data-col="pedido">PEDIDO ↕</th>
-        <th data-col="pago">PAGO ↕</th>
-        <th data-col="urgPgto">URG. PGTO ↕</th>
-        <th data-col="valor">VALOR (R$) ↕</th>
-        <th data-col="data">DATA ↕</th>
-        <th data-col="fornecedor">FORNECEDOR ↕</th>
-        <th data-col="observacao">OBSERVAÇÃO ↕</th>
-        <th data-col="totalTag">TOTAL TAG ↕</th>
-        <th data-col="prioridade">PRIORIDADE ↕</th>
-        <th data-col="obra">OBRA ↕</th>
-        <th data-col="operacional">OPERACIONAL ↕</th>
-        <th>AÇÕES</th>
-    </tr>
-</thead>
+                    <tr>
+                        <th data-col="tag">TAG ↕</th>
+                        <th data-col="pedido">PEDIDO ↕</th>
+                        <th data-col="obra">OBRA ↕</th>
+                        <th data-col="fornecedor">FORNECEDOR ↕</th>
+                        <th data-col="observacao">OBSERVAÇÃO ↕</th>
+                        <th data-col="valor">VALOR (R\$) ↕</th>
+                        <th data-col="totalTag">TOTAL TAG ↕</th>
+                        <th data-col="pago">PAGO ↕</th>
+                        <th data-col="urgPgto">URG. PGTO ↕</th>
+                        <th data-col="prioridade">PRIORIDADE ↕</th>
+                        <th data-col="operacional">OPERACIONAL ↕</th>
+                        <th data-col="data">DATA ↕</th>
+                        <th>AÇÕES</th>
+                    </tr>
+                </thead>
                 <tbody id="tabelaPedidos">
                     <tr><td colspan="13" style="text-align: center; padding: 25px; color: var(--bi-gray);">A carregar dados...</td></tr>
                 </tbody>
@@ -415,6 +486,22 @@
                 <input type="text" id="inputPedido" placeholder="Ex: 2">
             </div>
             <div class="form-group">
+                <label>Obra:</label>
+                <input type="text" id="inputObra" placeholder="Nome da Obra">
+            </div>
+            <div class="form-group">
+                <label>Fornecedor:</label>
+                <input type="text" id="inputFornecedor" placeholder="Nome do Fornecedor">
+            </div>
+            <div class="form-group">
+                <label>Observação do Pedido:</label>
+                <input type="text" id="inputObservacao" placeholder="Ex: PISTÃO FREIO MOTOR">
+            </div>
+            <div class="form-group">
+                <label>Valor (R\$):</label>
+                <input type="number" step="0.01" id="inputValor" placeholder="0.00">
+            </div>
+            <div class="form-group">
                 <label>Pago:</label>
                 <select id="inputPago">
                     <option value="NÃO">NÃO</option>
@@ -429,27 +516,11 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Valor (R\$):</label>
-                <input type="number" step="0.01" id="inputValor" placeholder="0.00">
-            </div>
-            <div class="form-group">
-                <label>Fornecedor:</label>
-                <input type="text" id="inputFornecedor" placeholder="Nome do Fornecedor">
-            </div>
-            <div class="form-group">
-                <label>Observação do Pedido:</label>
-                <input type="text" id="inputObservacao" placeholder="Ex: PISTÃO FREIO MOTOR">
-            </div>
-            <div class="form-group">
                 <label>Prioridade:</label>
                 <select id="inputPrioridade">
                     <option value="SIM">SIM</option>
                     <option value="Normal">Normal</option>
                 </select>
-            </div>
-            <div class="form-group">
-                <label>Obra:</label>
-                <input type="text" id="inputObra" placeholder="Nome da Obra">
             </div>
             <div class="form-group">
                 <label>Operacional:</label>
@@ -469,6 +540,37 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // SENHA DE ACESSO DO SISTEMA (Altere aqui se preferir)
+        const SENHA_MESTRA = "@rena#2026";
+
+        function verificarAutenticacao() {
+            if (sessionStorage.getItem("autenticado") === "true") {
+                document.getElementById('loginScreen').style.display = 'none';
+                iniciarEscutaTempoReal();
+            } else {
+                document.getElementById('loginScreen').style.display = 'flex';
+            }
+        }
+
+        document.getElementById('btnEntrarSistema').addEventListener('click', () => {
+            const senhaDigitada = document.getElementById('inputSenhaAcesso').value;
+            if (senhaDigitada === SENHA_MESTRA) {
+                sessionStorage.setItem("autenticado", "true");
+                document.getElementById('loginScreen').style.display = 'none';
+                iniciarEscutaTempoReal();
+            } else {
+                const erro = document.getElementById('loginErrorMsg');
+                erro.style.display = 'block';
+                document.getElementById('inputSenhaAcesso').value = '';
+            }
+        });
+
+        document.getElementById('inputSenhaAcesso').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                document.getElementById('btnEntrarSistema').click();
+            }
+        });
 
         const firebaseConfig = {
             apiKey: "AIzaSyDbMSVcNWytP1-6feee0eZJ6UFgTYko34I",
@@ -494,7 +596,6 @@
             console.error("Erro ao iniciar Firebase:", err);
         }
 
-        // Função auxiliar para formatar valores em BRL (R\$ 1.234,56)
         function formatarMoedaBRL(valor) {
             return Number(valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
         }
@@ -535,7 +636,6 @@
                 });
             }
 
-            // Calcular totais por tag para ordenação se necessário
             const totaisPorTag = {};
             listaGlobalPedidos.filter(p => (p.tipo || 'Máquinas') === abaAtual).forEach(p => {
                 const tag = (p.tag || '').trim().toUpperCase();
@@ -553,7 +653,6 @@
                 }
             });
 
-            // Aplicar ordenação ativa se houver
             if (ordenacaoColuna) {
                 filtrados.sort((a, b) => {
                     let valA, valB;
@@ -612,16 +711,16 @@
                     <tr>
                         <td>${p.tag || ''}</td>
                         <td>${p.pedido || ''}</td>
-                        <td><span class="badge-status ${badgeClass}">${p.pago || 'NÃO'}</span></td>
-                        <td><span class="badge-status ${badgeUrgClass}">${p.urgPgto || 'NÃO'}</span></td>
-                        <td>${formatarMoedaBRL(valor)}</td>
-                        <td>${p.data || ''}</td>
+                        <td>${p.obra || ''}</td>
                         <td>${p.fornecedor || ''}</td>
                         <td>${p.observacao || ''}</td>
+                        <td>${formatarMoedaBRL(valor)}</td>
                         <td>${formatarMoedaBRL(totalTagVal)}</td>
+                        <td><span class="badge-status ${badgeClass}">${p.pago || 'NÃO'}</span></td>
+                        <td><span class="badge-status ${badgeUrgClass}">${p.urgPgto || 'NÃO'}</span></td>
                         <td>${p.prioridade || ''}</td>
-                        <td>${p.obra || ''}</td>
                         <td>${p.operacional || ''}</td>
+                        <td>${p.data || ''}</td>
                         <td>
                             <button class="action-icon-btn btn-editar" data-id="${p.id}" title="Editar">✏️</button>
                             <button class="action-icon-btn btn-excluir" data-id="${p.id}" title="Excluir">🗑️</button>
@@ -642,13 +741,13 @@
                         document.getElementById('editId').value = pedidoObj.id;
                         document.getElementById('inputTag').value = pedidoObj.tag || '';
                         document.getElementById('inputPedido').value = pedidoObj.pedido || '';
-                        document.getElementById('inputPago').value = pedidoObj.pago || 'NÃO';
-                        document.getElementById('inputUrgPgto').value = pedidoObj.urgPgto || 'NÃO';
-                        document.getElementById('inputValor').value = pedidoObj.valor || '';
+                        document.getElementById('inputObra').value = pedidoObj.obra || '';
                         document.getElementById('inputFornecedor').value = pedidoObj.fornecedor || '';
                         document.getElementById('inputObservacao').value = pedidoObj.observacao || '';
+                        document.getElementById('inputValor').value = pedidoObj.valor || '';
+                        document.getElementById('inputPago').value = pedidoObj.pago || 'NÃO';
+                        document.getElementById('inputUrgPgto').value = pedidoObj.urgPgto || 'NÃO';
                         document.getElementById('inputPrioridade').value = pedidoObj.prioridade || 'Normal';
-                        document.getElementById('inputObra').value = pedidoObj.obra || '';
                         document.getElementById('inputOperacional').value = pedidoObj.operacional || 'NÃO';
                         
                         document.getElementById('modalTituloText').innerHTML = `✏ Editar Registo (<span id="modalAbaTitulo">${abaAtual}</span>)`;
@@ -700,13 +799,13 @@
             document.getElementById('editId').value = '';
             document.getElementById('inputTag').value = '';
             document.getElementById('inputPedido').value = '';
-            document.getElementById('inputPago').value = 'NÃO';
-            document.getElementById('inputUrgPgto').value = 'NÃO';
-            document.getElementById('inputValor').value = '';
+            document.getElementById('inputObra').value = '';
             document.getElementById('inputFornecedor').value = '';
             document.getElementById('inputObservacao').value = '';
+            document.getElementById('inputValor').value = '';
+            document.getElementById('inputPago').value = 'NÃO';
+            document.getElementById('inputUrgPgto').value = 'NÃO';
             document.getElementById('inputPrioridade').value = 'SIM';
-            document.getElementById('inputObra').value = '';
             document.getElementById('inputOperacional').value = 'NÃO';
             document.getElementById('modalTituloText').innerHTML = `➕ Novo Registo (<span id="modalAbaTitulo">${abaAtual}</span>)`;
             document.getElementById('modalNovo').style.display = 'flex';
@@ -746,13 +845,13 @@
             const editId = document.getElementById('editId').value;
             const tag = document.getElementById('inputTag').value;
             const pedido = document.getElementById('inputPedido').value;
-            const pago = document.getElementById('inputPago').value;
-            const urgPgto = document.getElementById('inputUrgPgto').value;
-            const valor = parseFloat(document.getElementById('inputValor').value) || 0;
+            const obra = document.getElementById('inputObra').value;
             const fornecedor = document.getElementById('inputFornecedor').value;
             const observacao = document.getElementById('inputObservacao').value;
+            const valor = parseFloat(document.getElementById('inputValor').value) || 0;
+            const pago = document.getElementById('inputPago').value;
+            const urgPgto = document.getElementById('inputUrgPgto').value;
             const prioridade = document.getElementById('inputPrioridade').value;
-            const obra = document.getElementById('inputObra').value;
             const operacional = document.getElementById('inputOperacional').value;
             const data = new Date().toLocaleDateString('pt-BR');
 
@@ -764,12 +863,12 @@
             try {
                 if (editId) {
                     await updateDoc(doc(db, "pedidos", editId), {
-                        tag, pedido, pago, urgPgto, valor, fornecedor, observacao, prioridade, obra, operacional
+                        tag, pedido, obra, fornecedor, observacao, valor, pago, urgPgto, prioridade, operacional
                     });
                 } else {
                     await addDoc(collection(db, "pedidos"), {
                         tipo: abaAtual,
-                        tag, pedido, pago, urgPgto, valor, fornecedor, observacao, prioridade, obra, operacional, data
+                        tag, pedido, obra, fornecedor, observacao, valor, pago, urgPgto, prioridade, operacional, data
                     });
                 }
 
@@ -794,16 +893,16 @@
                 return {
                     "TAG": p.tag,
                     "PEDIDO": p.pedido,
-                    "PAGO": p.pago,
-                    "URG. PGTO": p.urgPgto || 'NÃO',
-                    "VALOR (R\$)": formatarMoedaBRL(parseFloat(p.valor) || 0),
-                    "DATA": p.data,
+                    "OBRA": p.obra,
                     "FORNECEDOR": p.fornecedor,
                     "OBSERVAÇÃO": p.observacao,
+                    "VALOR (R\$)": formatarMoedaBRL(parseFloat(p.valor) || 0),
                     "TOTAL TAG (R\$)": formatarMoedaBRL(totaisPorTag[tagKey] || 0),
+                    "PAGO": p.pago,
+                    "URG. PGTO": p.urgPgto || 'NÃO',
                     "PRIORIDADE": p.prioridade,
-                    "OBRA": p.obra,
-                    "OPERACIONAL": p.operacional
+                    "OPERACIONAL": p.operacional,
+                    "DATA": p.data
                 };
             });
 
@@ -833,23 +932,23 @@
                 return [
                     p.tag || '',
                     p.pedido || '',
-                    p.pago || '',
-                    p.urgPgto || 'NÃO',
-                    formatarMoedaBRL(parseFloat(p.valor || 0)),
-                    p.data || '',
+                    p.obra || '',
                     p.fornecedor || '',
                     p.observacao || '',
+                    formatarMoedaBRL(parseFloat(p.valor || 0)),
                     formatarMoedaBRL(totalTagVal),
+                    p.pago || '',
+                    p.urgPgto || 'NÃO',
                     p.prioridade || '',
-                    p.obra || '',
-                    p.operacional || ''
+                    p.operacional || '',
+                    p.data || ''
                 ];
             });
 
             let valorTotalGeral = filtrados.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
 
             docPdf.autoTable({
-                head: [['TAG', 'PEDIDO', 'PAGO', 'URG. PGTO', 'VALOR', 'DATA', 'FORNECEDOR', 'OBSERVAÇÃO', 'TOTAL TAG', 'PRIORIDADE', 'OBRA', 'OPERACIONAL']],
+                head: [['TAG', 'PEDIDO', 'OBRA', 'FORNECEDOR', 'OBSERVAÇÃO', 'VALOR', 'TOTAL TAG', 'PAGO', 'URG. PGTO', 'PRIORIDADE', 'OPERACIONAL', 'DATA']],
                 body: dadosPdf,
                 startY: 20,
                 styles: { fontSize: 7 },
@@ -864,7 +963,6 @@
             docPdf.save(`Enterprise_Report_${abaAtual}_${nomeFiltroDescricao}.pdf`);
         });
 
-        // Botão dedicado para exportar/imprimir somente os URGENTES (SIM)
         document.getElementById('btnPdfUrgentes').addEventListener('click', () => {
             const { filtrados, totaisPorTag } = obterDadosFiltradosEOrdenadosAtuais();
             const apenasUrgentes = filtrados.filter(p => String(p.urgPgto).toUpperCase() === 'SIM');
@@ -885,23 +983,23 @@
                 return [
                     p.tag || '',
                     p.pedido || '',
-                    p.pago || '',
-                    p.urgPgto || 'SIM',
-                    formatarMoedaBRL(parseFloat(p.valor || 0)),
-                    p.data || '',
+                    p.obra || '',
                     p.fornecedor || '',
                     p.observacao || '',
+                    formatarMoedaBRL(parseFloat(p.valor || 0)),
                     formatarMoedaBRL(totalTagVal),
+                    p.pago || '',
+                    p.urgPgto || 'SIM',
                     p.prioridade || '',
-                    p.obra || '',
-                    p.operacional || ''
+                    p.operacional || '',
+                    p.data || ''
                 ];
             });
 
             let valorTotalUrgentes = apenasUrgentes.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
 
             docPdf.autoTable({
-                head: [['TAG', 'PEDIDO', 'PAGO', 'URG. PGTO', 'VALOR', 'DATA', 'FORNECEDOR', 'OBSERVAÇÃO', 'TOTAL TAG', 'PRIORIDADE', 'OBRA', 'OPERACIONAL']],
+                head: [['TAG', 'PEDIDO', 'OBRA', 'FORNECEDOR', 'OBSERVAÇÃO', 'VALOR', 'TOTAL TAG', 'PAGO', 'URG. PGTO', 'PRIORIDADE', 'OPERACIONAL', 'DATA']],
                 body: dadosPdf,
                 startY: 20,
                 styles: { fontSize: 7 },
@@ -958,7 +1056,8 @@
             reader.readAsText(file);
         });
 
-        iniciarEscutaTempoReal();
+        // Inicializar verificação de segurança no carregamento
+        verificarAutenticacao();
     </script>
 </body>
 </html>
