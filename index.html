@@ -414,11 +414,11 @@
             </div>
             <div class="card">
                 <div class="card-title">Valor Total (Filtro)</div>
-                <div class="card-value" id="valTotalValor">R\$ 0,00</div>
+                <div class="card-value" id="valTotalValor">R$ 0,00</div>
             </div>
             <div class="card">
                 <div class="card-title">Total Pendente</div>
-                <div class="card-value" id="valTotalPendente" style="color: var(--danger-color);">R\$ 0,00</div>
+                <div class="card-value" id="valTotalPendente" style="color: var(--danger-color);">R$ 0,00</div>
             </div>
         </div>
 
@@ -451,7 +451,7 @@
                         <th data-col="obra">OBRA ↕</th>
                         <th data-col="fornecedor">FORNECEDOR ↕</th>
                         <th data-col="observacao">OBSERVAÇÃO ↕</th>
-                        <th data-col="valor">VALOR (R\$) ↕</th>
+                        <th data-col="valor">VALOR (R$) ↕</th>
                         <th data-col="totalTag">TOTAL TAG ↕</th>
                         <th data-col="pago">PAGO ↕</th>
                         <th data-col="urgPgto">URG. PGTO ↕</th>
@@ -498,7 +498,7 @@
                 <input type="text" id="inputObservacao" placeholder="Ex: PISTÃO FREIO MOTOR">
             </div>
             <div class="form-group">
-                <label>Valor (R\$):</label>
+                <label>Valor (R$):</label>
                 <input type="number" step="0.01" id="inputValor" placeholder="0.00">
             </div>
             <div class="form-group">
@@ -541,8 +541,19 @@
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getFirestore, collection, addDoc, onSnapshot, deleteDoc, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // SENHA DE ACESSO DO SISTEMA (Altere aqui se preferir)
+        // SENHA DE ACESSO DO SISTEMA
         const SENHA_MESTRA = "@rena#2026";
+
+        // Função para higienizar textos e evitar XSS (Segurança)
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
 
         function verificarAutenticacao() {
             if (sessionStorage.getItem("autenticado") === "true") {
@@ -709,18 +720,18 @@
 
                 return `
                     <tr>
-                        <td>${p.tag || ''}</td>
-                        <td>${p.pedido || ''}</td>
-                        <td>${p.obra || ''}</td>
-                        <td>${p.fornecedor || ''}</td>
-                        <td>${p.observacao || ''}</td>
+                        <td>${escapeHtml(p.tag)}</td>
+                        <td>${escapeHtml(p.pedido)}</td>
+                        <td>${escapeHtml(p.obra)}</td>
+                        <td>${escapeHtml(p.fornecedor)}</td>
+                        <td>${escapeHtml(p.observacao)}</td>
                         <td>${formatarMoedaBRL(valor)}</td>
                         <td>${formatarMoedaBRL(totalTagVal)}</td>
-                        <td><span class="badge-status ${badgeClass}">${p.pago || 'NÃO'}</span></td>
-                        <td><span class="badge-status ${badgeUrgClass}">${p.urgPgto || 'NÃO'}</span></td>
-                        <td>${p.prioridade || ''}</td>
-                        <td>${p.operacional || ''}</td>
-                        <td>${p.data || ''}</td>
+                        <td><span class="badge-status ${badgeClass}">${escapeHtml(p.pago || 'NÃO')}</span></td>
+                        <td><span class="badge-status ${badgeUrgClass}">${escapeHtml(p.urgPgto || 'NÃO')}</span></td>
+                        <td>${escapeHtml(p.prioridade)}</td>
+                        <td>${escapeHtml(p.operacional)}</td>
+                        <td>${escapeHtml(p.data)}</td>
                         <td>
                             <button class="action-icon-btn btn-editar" data-id="${p.id}" title="Editar">✏️</button>
                             <button class="action-icon-btn btn-excluir" data-id="${p.id}" title="Excluir">🗑️</button>
@@ -843,11 +854,11 @@
 
         document.getElementById('btnSalvarPedido').addEventListener('click', async () => {
             const editId = document.getElementById('editId').value;
-            const tag = document.getElementById('inputTag').value;
-            const pedido = document.getElementById('inputPedido').value;
-            const obra = document.getElementById('inputObra').value;
-            const fornecedor = document.getElementById('inputFornecedor').value;
-            const observacao = document.getElementById('inputObservacao').value;
+            const tag = document.getElementById('inputTag').value.trim();
+            const pedido = document.getElementById('inputPedido').value.trim();
+            const obra = document.getElementById('inputObra').value.trim();
+            const fornecedor = document.getElementById('inputFornecedor').value.trim();
+            const observacao = document.getElementById('inputObservacao').value.trim();
             const valor = parseFloat(document.getElementById('inputValor').value) || 0;
             const pago = document.getElementById('inputPago').value;
             const urgPgto = document.getElementById('inputUrgPgto').value;
@@ -896,8 +907,8 @@
                     "OBRA": p.obra,
                     "FORNECEDOR": p.fornecedor,
                     "OBSERVAÇÃO": p.observacao,
-                    "VALOR (R\$)": formatarMoedaBRL(parseFloat(p.valor) || 0),
-                    "TOTAL TAG (R\$)": formatarMoedaBRL(totaisPorTag[tagKey] || 0),
+                    "VALOR (R$)": formatarMoedaBRL(parseFloat(p.valor) || 0),
+                    "TOTAL TAG (R$)": formatarMoedaBRL(totaisPorTag[tagKey] || 0),
                     "PAGO": p.pago,
                     "URG. PGTO": p.urgPgto || 'NÃO',
                     "PRIORIDADE": p.prioridade,
@@ -1056,7 +1067,6 @@
             reader.readAsText(file);
         });
 
-        // Inicializar verificação de segurança no carregamento
         verificarAutenticacao();
     </script>
 </body>
