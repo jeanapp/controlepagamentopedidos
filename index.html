@@ -455,7 +455,7 @@
                         <th data-col="totalTag">TOTAL TAG ↕</th>
                         <th data-col="pago">PAGO ↕</th>
                         <th data-col="urgPgto">URG. PGTO ↕</th>
-                        <th data-col="prioridade">PRIORIDADE ↕</th>
+                        <th data-col="previsao">PREVISÃO LIBERAÇÃO ↕</th>
                         <th data-col="operacional">OPERACIONAL ↕</th>
                         <th data-col="data">DATA ↕</th>
                         <th>AÇÕES</th>
@@ -516,11 +516,8 @@
                 </select>
             </div>
             <div class="form-group">
-                <label>Prioridade:</label>
-                <select id="inputPrioridade">
-                    <option value="SIM">SIM</option>
-                    <option value="Normal">Normal</option>
-                </select>
+                <label>Previsão de Liberação:</label>
+                <input type="text" id="inputPrevisao" placeholder="Ex: 25/11/2026 ou Indefinido">
             </div>
             <div class="form-group">
                 <label>Operacional:</label>
@@ -729,7 +726,7 @@
                         <td>${formatarMoedaBRL(totalTagVal)}</td>
                         <td><span class="badge-status ${badgeClass}">${escapeHtml(p.pago || 'NÃO')}</span></td>
                         <td><span class="badge-status ${badgeUrgClass}">${escapeHtml(p.urgPgto || 'NÃO')}</span></td>
-                        <td>${escapeHtml(p.prioridade)}</td>
+                        <td>${escapeHtml(p.previsao || '')}</td>
                         <td>${escapeHtml(p.operacional)}</td>
                         <td>${escapeHtml(p.data)}</td>
                         <td>
@@ -758,7 +755,7 @@
                         document.getElementById('inputValor').value = pedidoObj.valor || '';
                         document.getElementById('inputPago').value = pedidoObj.pago || 'NÃO';
                         document.getElementById('inputUrgPgto').value = pedidoObj.urgPgto || 'NÃO';
-                        document.getElementById('inputPrioridade').value = pedidoObj.prioridade || 'Normal';
+                        document.getElementById('inputPrevisao').value = pedidoObj.previsao || '';
                         document.getElementById('inputOperacional').value = pedidoObj.operacional || 'NÃO';
                         
                         document.getElementById('modalTituloText').innerHTML = `✏ Editar Registo (<span id="modalAbaTitulo">${abaAtual}</span>)`;
@@ -816,7 +813,7 @@
             document.getElementById('inputValor').value = '';
             document.getElementById('inputPago').value = 'NÃO';
             document.getElementById('inputUrgPgto').value = 'NÃO';
-            document.getElementById('inputPrioridade').value = 'SIM';
+            document.getElementById('inputPrevisao').value = '';
             document.getElementById('inputOperacional').value = 'NÃO';
             document.getElementById('modalTituloText').innerHTML = `➕ Novo Registo (<span id="modalAbaTitulo">${abaAtual}</span>)`;
             document.getElementById('modalNovo').style.display = 'flex';
@@ -862,7 +859,7 @@
             const valor = parseFloat(document.getElementById('inputValor').value) || 0;
             const pago = document.getElementById('inputPago').value;
             const urgPgto = document.getElementById('inputUrgPgto').value;
-            const prioridade = document.getElementById('inputPrioridade').value;
+            const previsao = document.getElementById('inputPrevisao').value.trim();
             const operacional = document.getElementById('inputOperacional').value;
             const data = new Date().toLocaleDateString('pt-BR');
 
@@ -874,12 +871,12 @@
             try {
                 if (editId) {
                     await updateDoc(doc(db, "pedidos", editId), {
-                        tag, pedido, obra, fornecedor, observacao, valor, pago, urgPgto, prioridade, operacional
+                        tag, pedido, obra, fornecedor, observacao, valor, pago, urgPgto, previsao, operacional
                     });
                 } else {
                     await addDoc(collection(db, "pedidos"), {
                         tipo: abaAtual,
-                        tag, pedido, obra, fornecedor, observacao, valor, pago, urgPgto, prioridade, operacional, data
+                        tag, pedido, obra, fornecedor, observacao, valor, pago, urgPgto, previsao, operacional, data
                     });
                 }
 
@@ -911,7 +908,7 @@
                     "TOTAL TAG (R$)": formatarMoedaBRL(totaisPorTag[tagKey] || 0),
                     "PAGO": p.pago,
                     "URG. PGTO": p.urgPgto || 'NÃO',
-                    "PRIORIDADE": p.prioridade,
+                    "PREVISÃO LIBERAÇÃO": p.previsao || '',
                     "OPERACIONAL": p.operacional,
                     "DATA": p.data
                 };
@@ -950,7 +947,7 @@
                     formatarMoedaBRL(totalTagVal),
                     p.pago || '',
                     p.urgPgto || 'NÃO',
-                    p.prioridade || '',
+                    p.previsao || '',
                     p.operacional || '',
                     p.data || ''
                 ];
@@ -959,7 +956,7 @@
             let valorTotalGeral = filtrados.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
 
             docPdf.autoTable({
-                head: [['TAG', 'PEDIDO', 'OBRA', 'FORNECEDOR', 'OBSERVAÇÃO', 'VALOR', 'TOTAL TAG', 'PAGO', 'URG. PGTO', 'PRIORIDADE', 'OPERACIONAL', 'DATA']],
+                head: [['TAG', 'PEDIDO', 'OBRA', 'FORNECEDOR', 'OBSERVAÇÃO', 'VALOR', 'TOTAL TAG', 'PAGO', 'URG. PGTO', 'PREVISÃO', 'OPERACIONAL', 'DATA']],
                 body: dadosPdf,
                 startY: 20,
                 styles: { fontSize: 7 },
@@ -1001,7 +998,7 @@
                     formatarMoedaBRL(totalTagVal),
                     p.pago || '',
                     p.urgPgto || 'SIM',
-                    p.prioridade || '',
+                    p.previsao || '',
                     p.operacional || '',
                     p.data || ''
                 ];
@@ -1010,7 +1007,7 @@
             let valorTotalUrgentes = apenasUrgentes.reduce((acc, p) => acc + (parseFloat(p.valor) || 0), 0);
 
             docPdf.autoTable({
-                head: [['TAG', 'PEDIDO', 'OBRA', 'FORNECEDOR', 'OBSERVAÇÃO', 'VALOR', 'TOTAL TAG', 'PAGO', 'URG. PGTO', 'PRIORIDADE', 'OPERACIONAL', 'DATA']],
+                head: [['TAG', 'PEDIDO', 'OBRA', 'FORNECEDOR', 'OBSERVAÇÃO', 'VALOR', 'TOTAL TAG', 'PAGO', 'URG. PGTO', 'PREVISÃO', 'OPERACIONAL', 'DATA']],
                 body: dadosPdf,
                 startY: 20,
                 styles: { fontSize: 7 },
